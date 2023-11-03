@@ -1,0 +1,53 @@
+﻿https://github.com/DjvuNet/DjvuNet/tree/7c11c0bc0e7af994cfef31c020f88b4ce06fbcd0/DjvuNet.Shared.Tests/xunit
+https://github.com/DjvuNet/DjvuNet/blob/master/LICENSE.md
+
+https://stackoverflow.com/a/46755286
+
+Actually there is a working solution requiring some plumbing code which should work with unchanged tests. 
+It requires implementation of custom TheoryAttribute, custom TheoryDiscoverer, and custom TestCase classes. 
+Whole solution is available under MIT license in this repo DjvuNet/DjvuNet.Shared.Tests.
+
+Required files with implementations are: DjvuTheoryAttribute, DjvuTheoryDiscoverer, DjvuNamedDataRowTestCase, DjvuDataRowTestCase
+
+Usage is straightforward: compile above files either including them directly into test assembly 
+or as a separate assembly and use them in code as follows:
+
+    [DjvuTheory]
+    [ClassData(typeof(DjvuJsonDataSource))]
+    public void DirmChunk_Theory(DjvuJsonDocument doc, int index)
+    {
+        int pageCount = 0;
+        using (DjvuDocument document = DjvuNet.Tests.Util.GetTestDocument(index, out pageCount))
+        {
+            DjvuNet.Tests.Util.VerifyDjvuDocument(pageCount, document);
+            DjvuNet.Tests.Util.VerifyDjvuDocumentCtor(pageCount, document);
+
+            // DirmChunk is present only in multi page documents
+            // in which root form is of DjvmChunk type
+            if (document.RootForm.ChunkType == ChunkType.Djvm)
+            {
+                DirmChunk dirm = ((DjvmChunk)document.RootForm).Dirm;
+
+                Assert.NotNull(dirm);
+
+                Assert.True(dirm.IsBundled ? doc.Data.Dirm.DocumentType == "bundled" : doc.Data.Dirm.DocumentType == "indirect");
+
+                var components = dirm.Components;
+                Assert.Equal<int>(components.Count, doc.Data.Dirm.FileCount);
+            }
+        }
+    }
+One of the theory function arguments is not serializable in xUnit but despite that 
+theory tests will be displayed individually and numbered. If first argument to theory 
+function is of the string type it will be used as a name of the test besides being an argument to function invocation.
+
+Credit for the idea goes to other developer - I have to find a link 
+to his code - but it was reimplemented from scratch for DjvuNet project.
+
+Share
+Improve this answer
+Follow
+answered Oct 15, 2017 at 12:57
+user avatar
+Jacek Blaszczynski
+3,0851313 silver badges25
